@@ -21,7 +21,7 @@ loop(int ptym, int ignoreeof)
                 err_sys("read error from stdin");
             else if (nread ==0)
                 break;
-            if (write(ptym, buf, nread) != nread)
+            if (writen(ptym, buf, nread) != nread)
                 err_sys("writen error to master pty");
         }
         if (ignoreeof == 0)
@@ -35,8 +35,8 @@ loop(int ptym, int ignoreeof)
     for (;;) {
         if ((nread = read(ptym, buf, BUFSIZE)) <= 0)
             break;
-        if (write(STDOUT_FILENO, buf, nread) != nread)
-            err_sys("write error to stdout");
+        if (writen(STDOUT_FILENO, buf, nread) != nread)
+            err_sys("writen error to stdout");
     }
 
     if (sigcaught == 0)

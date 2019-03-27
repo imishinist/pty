@@ -23,8 +23,17 @@ int main(int argc, char *argv[]) {
     opterr = 0;
     while ((c = getopt(argc, argv, OPTSTR)) != EOF) {
         switch (c) {
+            case 'd':
+                driver = optarg;
+                break;
             case 'e':
                 noecho = 1;
+                break;
+            case 'i':
+                ignoreeof = 1;
+                break;
+            case 'n':
+                interactive = 0;
                 break;
             case 'v':
                 verbose = 1;
@@ -37,7 +46,17 @@ int main(int argc, char *argv[]) {
     if (optind >= argc)
         err_quit("usage: pty [ -d driver -einv ] program [ arg ... ]");
 
-    pid = pty_fork(&fdm, slave_name, sizeof(slave_name), NULL, NULL);
+    if (interactive) {
+        if (tcgetattr(STDIN_FILENO, &orig_termios) < 0)
+            err_sys("tcgetattr error on stdin");
+        if (ioctl(STDIN_FILENO, TIOCGWINSZ, (char *) &size) < 0)
+            err_sys("TIOCGWINSZ error");
+        pid = pty_fork(&fdm, slave_name, sizeof(slave_name),
+                &orig_termios, &size);
+    } else {
+        pid = pty_fork(&fdm, slave_name, sizeof(slave_name),
+                NULL, NULL);
+    }
 
     if (pid < 0) {
         err_sys("fork error");
@@ -50,7 +69,20 @@ int main(int argc, char *argv[]) {
     }
     if (verbose) {
         fprintf(stderr, "slave name = %s\n", slave_name);
+        if (driver != NULL)
+            fprintf(stderr, "driver = %s\n", driver);
     }
+
+    /*
+    if (interactive && driver == NULL) {
+        if (tty_raw(STDIN_FILENO) < 0)
+            err_sys("tty_raw error");
+        if (atexit(tty_atexit) < 0)
+            err_sys("atexit error");
+    }
+    */
+    if (driver)
+        do_driver(driver);
 
     loop(fdm, ignoreeof);
 
